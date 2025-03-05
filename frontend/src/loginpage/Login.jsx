@@ -4,9 +4,10 @@ import { useNavigate } from "react-router-dom";
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [loading, setLoading] = useState(false);
-
   useEffect(() => {
     const checkTokenValidity = async () => {
       const token = localStorage.getItem("token");
@@ -36,7 +37,7 @@ const Login = () => {
     };
 
     checkTokenValidity();
-  }, []); // <--- Empty dependency array ensures it runs only once
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,16 +48,22 @@ const Login = () => {
       return;
     }
 
+    if (!password) {
+      setPasswordError("Password is required.");
+      return;
+    }
+
     setEmailError("");
+    setPasswordError("");
     setLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API}/user`, {
+      const response = await fetch(`${import.meta.env.VITE_API}/user/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, pswd: password }),
       });
 
       const data = await response.json();
@@ -84,7 +91,7 @@ const Login = () => {
       </div>
       <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
         <h2 className="text-2xl mb-6 text-center">Login with Gmail</h2>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="off">
           <div className="mb-4">
             <label className="block text-gray-700">Email:</label>
             <input
@@ -93,8 +100,22 @@ const Login = () => {
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1 p-2 border w-full rounded"
               disabled={loading}
+              autoComplete="off"
             />
             {emailError && <p className="text-red-500 mt-2">{emailError}</p>}
+          </div>
+          <div className="mb-4 relative">
+            <label className="block text-gray-700">Password:</label>
+            <input
+              type= "password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1 p-2 border w-full rounded pr-10"
+              disabled={loading}
+              autoComplete="off"
+              onPaste={(e) => e.preventDefault()}
+            />
+            {passwordError && <p className="text-red-500 mt-2">{passwordError}</p>}
           </div>
           <div className="flex justify-center">
             <button

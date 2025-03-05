@@ -132,7 +132,6 @@ export const createPT = async (req: Request, res: Response) => {
       parts: structure,
     }));
 
-    console.log("Types Map:", types);
 
     const newPTList = new PtList({
       title,

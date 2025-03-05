@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { FiMoreVertical } from "react-icons/fi";
 import AddPtModal from "./AddPtModal";
 
 export default function ViewPtLists() {
@@ -10,9 +11,12 @@ export default function ViewPtLists() {
   const [pts, setPts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dropdownIndex, setDropdownIndex] = useState(null);
+  const dropdownRef = useRef(null);
 
   const fetchPts = async () => {
     try {
+      setIsLoading(true);
       const token = localStorage.getItem("token");
       const response = await fetch(
         `${import.meta.env.VITE_API}/pt/${batchId}/${semesterId}`,
@@ -24,9 +28,11 @@ export default function ViewPtLists() {
           },
         }
       );
+
       if (!response.ok) {
         throw new Error("Failed to fetch PT lists");
       }
+
       const data = await response.json();
       setPts(data);
     } catch (error) {
@@ -37,20 +43,62 @@ export default function ViewPtLists() {
     }
   };
 
+  const handleDelete = async (ptId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${import.meta.env.VITE_API}/pt`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token,
+        },
+        body: JSON.stringify({
+          batchId,
+          semId:semesterId,
+          ptId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete PT list");
+      }
+
+      setPts((prevPts) => prevPts.filter((pt) => pt.ptId !== ptId));
+      setDropdownIndex(null);
+    } catch (error) {
+      console.error("Error deleting PT list:", error);
+      setError("Failed to delete PT list.");
+    }
+  };
+
   useEffect(() => {
     fetchPts();
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownIndex(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   return (
     <>
       <div className="flex justify-end p-2 font-primary">
         <button
-          className="bg-green-600 text-xl p-2 w-fit text-white border-2 border-none rounded-md mt-4"
+          className="bg-green-600 text-xl p-2 w-fit text-white border-none rounded-md mt-4"
           onClick={() => setIsModalOpen(true)}
         >
           Add PtList
         </button>
       </div>
+
       <AddPtModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -71,15 +119,45 @@ export default function ViewPtLists() {
             No PT lists available.
           </div>
         ) : (
-          pts.map((pt) => (
+          pts.map((pt, index) => (
             <div
               key={pt.ptId}
-              className="p-4 bg-gray-200 rounded-md shadow-md hover:shadow-2xl cursor-pointer"
-              onClick={() =>
-                navigate(`/ptlists/${batchId}/${semesterId}/${pt.ptId}`)
-              }
+              className="relative p-4 bg-gray-200 rounded-md shadow-sm hover:shadow-md flex justify-between items-center"
             >
-              {pt.title}
+              <div
+                className="cursor-pointer flex-grow"
+                onClick={() =>
+                  navigate(`/ptlists/${batchId}/${semesterId}/${pt.ptId}`)
+                }
+              >
+                {pt.title}
+              </div>
+
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDropdownIndex(dropdownIndex === index ? null : index);
+                  }}
+                >
+                  <FiMoreVertical />
+                </button>
+
+                {dropdownIndex === index && (
+                  <div className="absolute right-0 mt-2 w-32 bg-white border rounded shadow-md">
+                    <button
+                      className="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-100 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleDelete(pt.ptId);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           ))
         )}

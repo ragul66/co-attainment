@@ -129,7 +129,7 @@ export const addCourseList = async (req: Request, res: Response) => {
 
     const students = namelist.map((student) => {
       const scores = new Map<string, number>();
-      Object.keys(structure).forEach((row:string) => scores.set(row, 0));
+      Object.keys(structure).forEach((row: string) => scores.set(row, 0));
 
       return {
         rollno: student.rollno,
@@ -140,11 +140,10 @@ export const addCourseList = async (req: Request, res: Response) => {
     const structureMap = new Map<string, number>(
       Object.entries(structure).map(([key, value]) => [key, Number(value)])
     );
-    
 
     const newCoList = new CoList({
       title,
-      structure: structureMap, 
+      structure: structureMap,
       students,
     });
     sem.courselists.push(newCoList);
@@ -171,40 +170,38 @@ export const editCourseList = async (req: Request, res: Response) => {
       !mongoose.Types.ObjectId.isValid(userId) ||
       !rollno ||
       !scores ||
-      typeof scores !== "object"
+      typeof scores !== 'object'
     ) {
-      return handleErrorResponse(res, 400, "Invalid or missing fields.");
+      return handleErrorResponse(res, 400, 'Invalid or missing fields.');
     }
 
-    // Find user
     const user = await User.findById(userId);
-    if (!user) return handleErrorResponse(res, 404, "User not found.");
+    if (!user) return handleErrorResponse(res, 404, 'User not found.');
 
-    // Find batch
     const batch = user.batches.find((batch) => batch._id.equals(batchId));
-    if (!batch) return handleErrorResponse(res, 404, "Batch not found.");
+    if (!batch) return handleErrorResponse(res, 404, 'Batch not found.');
 
-    // Find semester
     const sem = batch.semlists.find((sem) => sem._id.equals(semId));
-    if (!sem) return handleErrorResponse(res, 404, "Semester not found.");
+    if (!sem) return handleErrorResponse(res, 404, 'Semester not found.');
 
-    // Find course
     const course = sem.courselists.find((course) => course._id.equals(coId));
-    if (!course) return handleErrorResponse(res, 404, "Course not found.");
+    if (!course) return handleErrorResponse(res, 404, 'Course not found.');
 
-    // Find student
-    const student = course.students.find((student) => student.rollno === rollno);
-    if (!student) return handleErrorResponse(res, 404, "Student not found.");
+    const student = course.students.find(
+      (student) => student.rollno === rollno
+    );
+    if (!student) return handleErrorResponse(res, 404, 'Student not found.');
 
-    // Update student scores
     student.scores = scores;
 
-    // Calculate weighted average percentage
     let totalObtained = 0;
     let totalMaxMarks = 0;
 
     course.structure.forEach((maxMark, key) => {
-      const score = typeof scores[key] === "number" ? scores[key] : Number(scores[key]) || 0;
+      const score =
+        typeof scores[key] === 'number'
+          ? scores[key]
+          : Number(scores[key]) || 0;
 
       if (maxMark > 0) {
         totalObtained += score;
@@ -212,22 +209,21 @@ export const editCourseList = async (req: Request, res: Response) => {
       }
     });
 
-    // Compute percentage
-    student.average = totalMaxMarks > 0 ? parseFloat(((totalObtained * 100) / totalMaxMarks).toFixed(2)) : 0;
+    student.average =
+      totalMaxMarks > 0
+        ? parseFloat(((totalObtained * 100) / totalMaxMarks).toFixed(2))
+        : 0;
 
-    console.log(`Updated student average: ${student.average}`);
-
-    // Save updated user data
     await user.save();
 
-    return res.status(200).json({ message: "Course list updated successfully.", semester: sem });
+    return res
+      .status(200)
+      .json({ message: 'Course list updated successfully.', semester: sem });
   } catch (error) {
-    console.error("Error updating course list:", (error as Error).message);
-    return handleErrorResponse(res, 500, "Internal Server Error");
+    console.error('Error updating course list:', (error as Error).message);
+    return handleErrorResponse(res, 500, 'Internal Server Error');
   }
 };
-
-
 
 // Delete COlist by ID
 export const deleteCourseList = async (req: Request, res: Response) => {

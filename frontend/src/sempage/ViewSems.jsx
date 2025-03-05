@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { FiMoreVertical } from "react-icons/fi";
 import Addsemmodal from "./AddsemModal";
 
 function ViewSems() {
@@ -9,6 +10,8 @@ function ViewSems() {
   const [sems, setSems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dropdownIndex, setDropdownIndex] = useState(null);
+  const dropdownRef = useRef(null);
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
@@ -48,8 +51,49 @@ function ViewSems() {
     }
   };
 
+  const handleDelete = async (semesterId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${import.meta.env.VITE_API}/semester`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token,
+        },
+        body: JSON.stringify({
+          batchId,
+          semId: semesterId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete semester");
+      }
+
+      setSems((prevSems) =>
+        prevSems.filter((sem) => sem.semesterId !== semesterId)
+      );
+      setDropdownIndex(null);
+    } catch (error) {
+      console.error("Error deleting semester", error);
+      setError("Failed to delete semester");
+    }
+  };
+
   useEffect(() => {
     fetchSems();
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownIndex(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   return (
@@ -64,39 +108,64 @@ function ViewSems() {
         </button>
       </div>
 
-      {/* Loading State */}
       {loading && (
         <div className="text-center text-gray-500 text-lg mt-4">Loading...</div>
       )}
 
-      {/* Error State */}
       {error && (
         <div className="text-center text-red-500 text-lg mt-4">{error}</div>
       )}
 
-      {/* Empty State */}
       {!loading && sems.length === 0 && !error && (
         <div className="text-center text-gray-500 text-lg mt-4">
           No semesters found.
         </div>
       )}
 
-      {/* Semester Grid */}
       {!loading && sems.length > 0 && (
         <div className="grid grid-cols-4 gap-4 p-4">
           {sems.map((sem, index) => (
             <div
-              key={index}
-              className="p-4 bg-gray-200 rounded-md shadow-md hover:shadow-2xl cursor-pointer"
-              onClick={() => navigate(`/namelist/${batchId}/${sem.semesterId}`)}
+              key={sem.semesterId}
+              className="relative p-4 bg-gray-200 rounded-md shadow-sm hover:shadow-md flex justify-between items-center"
             >
-              {sem.title}
+              <div
+                className="cursor-pointer flex-grow"
+                onClick={() => navigate(`/namelist/${batchId}/${sem.semesterId}`)}
+              >
+                {sem.title}
+              </div>
+
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDropdownIndex(dropdownIndex === index ? null : index);
+                  }}
+                >
+                  <FiMoreVertical />
+                </button>
+
+                {dropdownIndex === index && (
+                  <div className="absolute right-0 mt-2 w-32 bg-white border rounded shadow-md">
+                    <button
+                      className="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-100 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleDelete(sem.semesterId);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Modal for Adding Semester */}
       <Addsemmodal
         isOpen={isModalOpen}
         onClose={closeModal}

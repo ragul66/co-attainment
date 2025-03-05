@@ -38,11 +38,10 @@ function AddSemModal({ isOpen, onClose, handleAddSem }) {
       setTitle("");
       setSuccess("Semester created successfully!");
 
-      // Close modal after a delay to show success message
       setTimeout(() => {
         setSuccess("");
         onClose();
-      }, 1500);
+      });
     } catch (error) {
       console.error("Error posting the semester:", error);
       setError("Failed to create semester. Please try again.");
