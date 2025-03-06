@@ -18,7 +18,8 @@ function Dashboard() {
     fetchBatch();
   };
 
-  const handleAddItem = (newItem) => setItems((prevItems) => [...prevItems, newItem]);
+  const handleAddItem = (newItem) =>
+    setItems((prevItems) => [...prevItems, newItem]);
 
   const fetchBatch = async () => {
     setLoading(true);
@@ -59,7 +60,9 @@ function Dashboard() {
       if (!response.ok) {
         throw new Error("Failed to delete batch");
       }
-      setItems((prevItems) => prevItems.filter((item) => item.batchId !== batchId));
+      setItems((prevItems) =>
+        prevItems.filter((item) => item.batchId !== batchId)
+      );
       setDropdownIndex(null); // Close dropdown after deletion
     } catch (error) {
       console.error("Error deleting batch:", error);
@@ -71,15 +74,18 @@ function Dashboard() {
     fetchBatch();
   }, []);
 
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setDropdownIndex(null);
+    useEffect(() => {
+      function handleClickOutside(event) {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+          setDropdownIndex(null);
+        }
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }, []);
 
   return (
     <>
@@ -98,15 +104,17 @@ function Dashboard() {
         ) : error ? (
           <p className="text-center col-span-4 text-red-600">{error}</p>
         ) : items.length === 0 ? (
-          <p className="text-center col-span-4 text-gray-500">No batches available.</p>
+          <p className="text-center col-span-4 text-gray-500">
+            No batches available.
+          </p>
         ) : (
           items.map((item, index) => (
             <div
               key={item.batchId}
-              className="relative p-4 bg-gray-200 rounded-md shadow-sm hover:shadow-md flex justify-between items-center"
+              className="relative bg-gray-200 rounded-md shadow-sm hover:shadow-md flex justify-between items-center"
             >
               <div
-                className="cursor-pointer flex-grow"
+                className="cursor-pointer flex-grow p-4"
                 onClick={() => navigate(`/sem/${item.batchId}`)}
               >
                 {item.title}
@@ -114,6 +122,7 @@ function Dashboard() {
 
               <div className="relative" ref={dropdownRef}>
                 <button
+                  className=" p-4"
                   onClick={(e) => {
                     e.stopPropagation();
                     setDropdownIndex(dropdownIndex === index ? null : index);
@@ -141,7 +150,11 @@ function Dashboard() {
         )}
       </div>
 
-      <AddbatchModal show={showModal} onClose={handleCloseModal} onAddItem={handleAddItem} />
+      <AddbatchModal
+        show={showModal}
+        onClose={handleCloseModal}
+        onAddItem={handleAddItem}
+      />
     </>
   );
 }

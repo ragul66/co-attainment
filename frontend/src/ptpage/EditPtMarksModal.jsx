@@ -23,7 +23,6 @@ export default function Editptmark({ student, onClose, fetchStudent }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      console.log(formData);
       const token = localStorage.getItem("token");
       const response = await fetch(`${import.meta.env.VITE_API}/pt`, {
         method: "PUT",
@@ -43,7 +42,6 @@ export default function Editptmark({ student, onClose, fetchStudent }) {
         throw new Error("Failed to update marks");
       }
       const data = await response.json();
-      console.log(data);
       fetchStudent();
       onClose();
     } catch (error) {

@@ -12,6 +12,7 @@ import CourseRoutes from './routes/courseRoutes';
 import PtRoutes from './routes/ptRoutes';
 import SeeRoutes from './routes/seeRoutes';
 import CoTypeRoutes from './routes/cotypeRoutes';
+import CoattainmentRoutes from './routes/coattainmentRoutes'
 
 const app = express();
 dotenv.config();
@@ -30,6 +31,7 @@ app.use('/course', CourseRoutes);
 app.use('/pt', PtRoutes);
 app.use('/see', SeeRoutes);
 app.use('/cotype', CoTypeRoutes);
+app.use('/coattainment', CoattainmentRoutes);
 
 
 app.get('/', (req: Request, res: Response) => {

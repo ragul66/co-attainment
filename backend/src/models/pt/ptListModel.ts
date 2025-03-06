@@ -3,6 +3,7 @@ import { ptStudentSchema, IPtStudent } from './ptStudentModel';
 import { IPtPart, ptPartSchema } from './ptPartModel';
 
 export interface IPtList extends Document {
+  _id:string
   title: string;
   maxMark: number;
   types: Map<string, number>;

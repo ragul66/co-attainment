@@ -1,214 +1,283 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import * as XLSX from "xlsx";
 
 function SelectCoatt() {
   const { batchId, semesterId } = useParams();
-  const [selectOptions, setSelectOptions] = useState([]);
-  const [selects, setSelects] = useState([]);
-  const [selectcourse, setselectcourse] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [dropdowns, setDropdowns] = useState([
-    { id: 0, type: "course", value: "" },
-  ]);
+  const [coattainmentData, setCoattainmentData] = useState([]);
+  const [skills, setSkills] = useState(new Set());
+  const [courseNames, setCourseNames] = useState(new Set());
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const token = localStorage.getItem("token");
-        const responses = await Promise.all([
-          fetch(`${import.meta.env.VITE_API}/pt/${batchId}/${semesterId}`, {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: token,
-            },
-          }),
-          fetch(`${import.meta.env.VITE_API}/course/${batchId}/${semesterId}`, {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: token,
-            },
-          }),
-        ]);
+    if (coattainmentData.length > 0) {
+      const skillSet = new Set();
+      const assessmentSet = new Set();
+      const courseSet = new Set();
 
-        if (!responses.every((response) => response.ok)) {
-          throw new Error("One or more network responses were not ok");
+      coattainmentData.forEach((student) => {
+        if (student.skills) {
+          Object.entries(student.skills).forEach(([skill, scores]) => {
+            skillSet.add(skill);
+            Object.keys(scores).forEach((type) => assessmentSet.add(type));
+          });
         }
+        if (student.courses) {
+          Object.keys(student.courses).forEach((course) =>
+            courseSet.add(course)
+          );
+        }
+      });
 
-        const [ptData, courseData] = await Promise.all(
-          responses.map((response) => response.json())
-        );
+      setSkills(skillSet);
+      setCourseNames(courseSet);
+    }
+  }, [coattainmentData]);
 
-        setselectcourse(ptData);
-        setSelects(courseData);
-      } catch (error) {
-        setError("Failed to fetch data. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [batchId, semesterId]);
-
-  const handleDropdownTypeChange = (id, value) => {
-    setDropdowns(
-      dropdowns.map((dropdown) =>
-        dropdown.id === id ? { ...dropdown, type: value, value: "" } : dropdown
-      )
-    );
-  };
-
-  const handleSelectionChange = (id, value) => {
-    setDropdowns(
-      dropdowns.map((dropdown) =>
-        dropdown.id === id ? { ...dropdown, value } : dropdown
-      )
-    );
-  };
-
-  const addDropdown = () =>
-    setDropdowns([
-      ...dropdowns,
-      { id: dropdowns.length, type: "course", value: "" },
-    ]);
-
-  const removeDropdown = (id) =>
-    setDropdowns(dropdowns.filter((dropdown) => dropdown.id !== id));
-
-  async function onSubmit(e) {
+  const onSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
+    setCoattainmentData([]);
 
     try {
       const token = localStorage.getItem("token");
-
-      // Collect selected PT and Course IDs
-      const selectedPtIds = dropdowns
-        .filter((d) => d.type === "pt" && d.value)
-        .map((d) => d.value);
-      const selectedCourseIds = dropdowns
-        .filter((d) => d.type === "course" && d.value)
-        .map((d) => d.value);
-
-      console.log("Selected PT IDs:", selectedPtIds);
-      console.log("Selected Course IDs:", selectedCourseIds);
-
-      const responses = await Promise.all([
-        fetch(
-          `${
-            import.meta.env.VITE_API
-          }/pt/${batchId}/${semesterId}/${selectedPtIds}`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: token,
-            },
-          }
-        ),
-        fetch(
-          `${
-            import.meta.env.VITE_API
-          }/course/${batchId}/${semesterId}/${selectedCourseIds}`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: token,
-            },
-          }
-        ),
-        fetch(`${import.meta.env.VITE_API}/see/${batchId}/${semesterId}`, {
+      const response = await fetch(
+        `${import.meta.env.VITE_API}/coattainment/${batchId}/${semesterId}`,
+        {
+          method: "GET",
           headers: {
             "Content-Type": "application/json",
             Authorization: token,
           },
-        }),
-      ]);
-
-      console.log(
-        "API Responses:",
-        await Promise.all(responses.map((res) => res.json()))
+        }
       );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch coattainment data.");
+      }
+
+      const data = await response.json();
+      console.log(data);
+      setCoattainmentData(data.data || []);
     } catch (error) {
-      console.error("Error submitting data:", error);
+      setError("Error retrieving coattainment data.");
     }
+  };
+
+  const calculateAverages = () => {
+    const totalStudents = coattainmentData.length;
+    if (totalStudents === 0) return {};
+
+    let cieTotal = 0,
+      seeTotal = 0;
+    let courseTotals = {};
+
+    coattainmentData.forEach((student) => {
+      [...skills].forEach((skill) => {
+        cieTotal += student.skills?.[skill]?.CIE ?? 0;
+        seeTotal += student.skills?.[skill]?.see ?? 0;
+      });
+
+      [...courseNames].forEach((course) => {
+        if (!courseTotals[course]) courseTotals[course] = 0;
+        courseTotals[course] += student.courses?.[course] ?? 0;
+      });
+    });
+
+    return {
+      avgCIE: (cieTotal / (totalStudents * skills.size)).toFixed(2),
+      avgSEE: (seeTotal / (totalStudents * skills.size)).toFixed(2),
+      avgCourses: Object.fromEntries(
+        Object.entries(courseTotals).map(([course, total]) => [
+          course,
+          (total / totalStudents).toFixed(2),
+        ])
+      ),
+    };
+  };
+
+  function exportToExcel() {
+    const worksheet = XLSX.utils.json_to_sheet(coattainmentData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Coattainment Data");
+    XLSX.writeFile(workbook, "CoattainmentData.xlsx");
   }
 
   return (
-    <div className="flex justify-center items-center min-h-screen p-6 bg-gray-100">
-      <div className="w-full max-w-2xl p-6 shadow-xl bg-white rounded-lg">
-        <form onSubmit={onSubmit}>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">Select Options</h2>
+    <div className="flex flex-col items-center min-h-screen p-6 bg-gray-100">
+      <div className="w-full max-w-6xl p-6 shadow-xl bg-white rounded-lg">
+        {error && <p className="text-red-600 mt-4">{error}</p>}
+        {!coattainmentData.length > 0 ? (
+          <form onSubmit={onSubmit} className="flex justify-center">
             <button
-              type="button"
-              onClick={addDropdown}
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500"
+              type="submit"
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500"
             >
-              Add +
+              Fetch Coattainment Data
             </button>
-          </div>
-
-          {error && <p className="text-red-500 mb-4">{error}</p>}
-
-          {loading ? (
-            <p className="text-gray-500 text-center">Loading...</p>
-          ) : (
-            <div className="space-y-4">
-              {dropdowns.map((dropdown) => (
-                <div key={dropdown.id} className="flex items-center gap-4">
-                  <select
-                    value={dropdown.type}
-                    onChange={(e) =>
-                      handleDropdownTypeChange(dropdown.id, e.target.value)
-                    }
-                    className="w-32 p-2 border rounded-md"
-                  >
-                    <option value="course">Course</option>
-                    <option value="pt">Pt</option>
-                  </select>
-                  <select
-                    value={dropdown.value}
-                    onChange={(e) =>
-                      handleSelectionChange(dropdown.id, e.target.value)
-                    }
-                    className="flex-1 p-2 border rounded-md"
-                  >
-                    <option value="">
-                      Select {dropdown.type === "course" ? "Course" : "Pt"}
-                    </option>
-                    {dropdown.type === "course" &&
-                      selects.map((option) => (
-                        <option key={option.courseId} value={option.courseId}>
-                          {option.title}
-                        </option>
-                      ))}
-                    {dropdown.type === "pt" &&
-                      selectcourse.map((option) => (
-                        <option key={option.ptId} value={option.ptId}>
-                          {option.title}
-                        </option>
-                      ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => removeDropdown(dropdown.id)}
-                    className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-500"
-                  >
-                    Delete
-                  </button>
-                </div>
-              ))}
+          </form>
+        ) : (
+          <div>
+            <div className="flex justify-between items-center p-2">
+              <h3 className="text-xl font-bold mb-4">Coattainment Results</h3>
+              <button
+                className="bg-gray-600 text-xl p-2 text-white rounded-md cursor-pointer"
+                onClick={exportToExcel}
+              >
+                Download Excel
+              </button>
             </div>
-          )}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-200">
+                    <th rowSpan="2" className="border p-2">
+                      Roll No
+                    </th>
+                    <th rowSpan="2" className="border p-2">
+                      Name
+                    </th>
+                    {[...skills].map((skill) => (
+                      <th
+                        key={`skill-${skill}`}
+                        colSpan={
+                          Object.keys(
+                            coattainmentData[0]?.skills?.[skill]?.pt || {}
+                          ).length + 2
+                        }
+                        className="border p-2"
+                      >
+                        {skill}
+                      </th>
+                    ))}
+                    {[...courseNames].map((course) => (
+                      <th
+                        rowSpan="2"
+                        key={`course-${course}`}
+                        className="border p-2"
+                      >
+                        {course}
+                      </th>
+                    ))}
+                    
+                  </tr>
+                  <tr className="bg-gray-100">
+                    {[...skills].map((skill) => {
+                      const ptTypes = Object.keys(
+                        coattainmentData[0]?.skills?.[skill]?.pt || {}
+                      );
+                      return (
+                        <React.Fragment key={`header-${skill}`}>
+                          {ptTypes.map((ptType) => (
+                            <th
+                              key={`${skill}-${ptType}`}
+                              className="border p-2"
+                            >
+                              {ptType}
+                            </th>
+                          ))}
+                          <th key={`${skill}-cie`} className="border p-2">
+                            CIE
+                          </th>
+                          <th key={`${skill}-see`} className="border p-2">
+                            SEE
+                          </th>
+                        </React.Fragment>
+                      );
+                    })}
+                  </tr>
+                </thead>
 
-          <button
-            type="submit"
-            className="w-full mt-6 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500"
-          >
-            Submit
-          </button>
-        </form>
+                <tbody>
+                  {coattainmentData.map((student) => (
+                    <tr key={student.rollno} className="text-center">
+                      <td className="border p-2">{student.rollno}</td>
+                      <td className="border p-2">{student.name}</td>
+                      {[...skills].map((skill) => {
+                        const ptTypes = Object.keys(
+                          student.skills?.[skill]?.pt || {}
+                        );
+                        return (
+                          <React.Fragment
+                            key={`data-${student.rollno}-${skill}`}
+                          >
+                            {ptTypes.map((ptType) => (
+                              <td
+                                key={`${student.rollno}-${skill}-${ptType}`}
+                                className="border p-2"
+                              >
+                                {student.skills?.[skill]?.pt?.[ptType] ?? "-"}
+                              </td>
+                            ))}
+                            <td className="border p-2">
+                              {student.skills?.[skill]?.CIE ?? "-"}
+                            </td>
+                            <td className="border p-2">
+                              {student.skills?.[skill]?.see ?? "-"}
+                            </td>
+                          </React.Fragment>
+                        );
+                      })}
+                      {[...courseNames].map((course) => (
+                        <td
+                          key={`course-${student.rollno}-${course}`}
+                          className="border p-2"
+                        >
+                          {student.courses?.[course] ?? "-"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-gray-100 font-bold">
+                    <td className="border p-2">Class Average</td>
+                    <td className="border p-2">-</td>
+                    {/* Empty cell for alignment */}
+                    {[...skills].map((skill) => {
+                      return (
+                        <React.Fragment key={`average-${skill}`}>
+                          <td className="border p-2">
+                            {(
+                              coattainmentData.reduce(
+                                (sum, student) =>
+                                  sum + (student.skills?.[skill]?.CIE || 0),
+                                0
+                              ) / coattainmentData.length
+                            ).toFixed(2)}
+                          </td>
+                          <td className="border p-2">
+                            {(
+                              coattainmentData.reduce(
+                                (sum, student) =>
+                                  sum + (student.skills?.[skill]?.SEE || 0),
+                                0
+                              ) / coattainmentData.length
+                            ).toFixed(2)}
+                          </td>
+                        </React.Fragment>
+                      );
+                    })}
+                    {[...courseNames].map((course) => {
+                      const courseAvg = (
+                        coattainmentData.reduce(
+                          (sum, student) =>
+                            sum + (student.courses?.[course] || 0),
+                          0
+                        ) / coattainmentData.length
+                      ).toFixed(2);
+                      return (
+                        <td key={`avg-course-${course}`} className="border p-2">
+                          {courseAvg}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

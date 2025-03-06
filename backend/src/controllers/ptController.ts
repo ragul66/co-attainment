@@ -87,18 +87,18 @@ export const createPT = async (req: Request, res: Response) => {
     const userId = await verifyToken(authHeader);
     const { title, structure, batchId, semId } = req.body;
 
-    if (!title) return handleErrorResponse(res, 400, "Title is required");
+    if (!title) return handleErrorResponse(res, 400, 'Title is required');
     if (!Array.isArray(structure))
-      return handleErrorResponse(res, 400, "Structure must be an array");
+      return handleErrorResponse(res, 400, 'Structure must be an array');
 
     const user = await User.findById(userId);
-    if (!user) return handleErrorResponse(res, 404, "User not found");
+    if (!user) return handleErrorResponse(res, 404, 'User not found');
 
     const batch = user.batches.find((b) => (b as any)._id.equals(batchId));
-    if (!batch) return handleErrorResponse(res, 404, "Batch not found");
+    if (!batch) return handleErrorResponse(res, 404, 'Batch not found');
 
     const sem = batch.semlists.find((s) => (s as any)._id.equals(semId));
-    if (!sem) return handleErrorResponse(res, 404, "Semester not found");
+    if (!sem) return handleErrorResponse(res, 404, 'Semester not found');
 
     const namelist = sem.namelist;
 
@@ -108,16 +108,13 @@ export const createPT = async (req: Request, res: Response) => {
     for (const part of structure) {
       const partMaxMark = part.maxMark ?? 0;
       const numQuestions = part.questions?.length ?? 0;
-      maxMark += numQuestions * partMaxMark; 
+      maxMark += numQuestions * partMaxMark;
 
       for (const question of part.questions) {
-        if (!question.option) continue; 
+        if (!question.option) continue;
 
         if (types.has(question.option)) {
-          types.set(
-            question.option,
-            types.get(question.option)! + partMaxMark
-          );
+          types.set(question.option, types.get(question.option)! + partMaxMark);
         } else {
           types.set(question.option, partMaxMark);
         }
@@ -132,7 +129,6 @@ export const createPT = async (req: Request, res: Response) => {
       parts: structure,
     }));
 
-
     const newPTList = new PtList({
       title,
       maxMark,
@@ -146,9 +142,9 @@ export const createPT = async (req: Request, res: Response) => {
 
     return res
       .status(201)
-      .json({ message: "PT list created successfully", ptList: newPTList });
+      .json({ message: 'PT list created successfully', ptList: newPTList });
   } catch (error) {
-    console.error("Error creating PT list:", error);
+    console.error('Error creating PT list:', error);
     return handleErrorResponse(
       res,
       500,
@@ -156,7 +152,6 @@ export const createPT = async (req: Request, res: Response) => {
     );
   }
 };
-
 
 interface Question {
   number: number;
@@ -234,7 +229,14 @@ export const updateStudentScore = async (req: Request, res: Response) => {
     });
 
     student.totalMark = totalMark;
-    student.typemark = typeMark;
+    const updatedTypeMark = new Map<string, number>();
+    for (const [option, mark] of typeMark.entries()) {
+      const maxTypeMark = ptList.types.get(option) || 1;
+      updatedTypeMark.set(option, Math.ceil((mark / maxTypeMark) * 100));
+    }
+    
+    student.typemark = updatedTypeMark;
+    
 
     await user.save();
 

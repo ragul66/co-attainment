@@ -84,17 +84,18 @@ function ViewSems() {
     fetchSems();
   }, []);
 
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setDropdownIndex(null);
+    useEffect(() => {
+      function handleClickOutside(event) {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+          setDropdownIndex(null);
+        }
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
+  
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }, []);
 
   return (
     <>
@@ -127,17 +128,20 @@ function ViewSems() {
           {sems.map((sem, index) => (
             <div
               key={sem.semesterId}
-              className="relative p-4 bg-gray-200 rounded-md shadow-sm hover:shadow-md flex justify-between items-center"
+              className="relative bg-gray-200 rounded-md shadow-sm hover:shadow-md flex justify-between items-center"
             >
               <div
-                className="cursor-pointer flex-grow"
-                onClick={() => navigate(`/namelist/${batchId}/${sem.semesterId}`)}
+                className="cursor-pointer p-4 flex-grow"
+                onClick={() =>
+                  navigate(`/namelist/${batchId}/${sem.semesterId}`)
+                }
               >
                 {sem.title}
               </div>
 
               <div className="relative" ref={dropdownRef}>
                 <button
+                  className=" p-4"
                   onClick={(e) => {
                     e.stopPropagation();
                     setDropdownIndex(dropdownIndex === index ? null : index);

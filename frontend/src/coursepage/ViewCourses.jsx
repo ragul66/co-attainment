@@ -53,8 +53,8 @@ const ViewCourses = () => {
         },
         body: JSON.stringify({
           batchId,
-          semId:semesterId,
-          coId:courseId,
+          semId: semesterId,
+          coId: courseId,
         }),
       });
 
@@ -76,18 +76,18 @@ const ViewCourses = () => {
     fetchCourses();
   }, []);
 
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setDropdownIndex(null);
+    useEffect(() => {
+      function handleClickOutside(event) {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+          setDropdownIndex(null);
+        }
       }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
+  
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }, []);
 
   return (
     <>
@@ -115,12 +115,14 @@ const ViewCourses = () => {
           courses.map((course, index) => (
             <div
               key={course.courseId}
-              className="relative p-4 bg-gray-200 rounded-md shadow-sm hover:shadow-md flex justify-between items-center"
+              className="relative bg-gray-200 rounded-md shadow-sm hover:shadow-md flex justify-between items-center"
             >
               <div
-                className="cursor-pointer flex-grow"
+                className="cursor-pointer p-4 flex-grow"
                 onClick={() =>
-                  navigate(`/courses/${batchId}/${semesterId}/${course.courseId}`)
+                  navigate(
+                    `/courses/${batchId}/${semesterId}/${course.courseId}`
+                  )
                 }
               >
                 {course.title}
@@ -128,6 +130,7 @@ const ViewCourses = () => {
 
               <div className="relative" ref={dropdownRef}>
                 <button
+                  className=" p-4"
                   onClick={(e) => {
                     e.stopPropagation();
                     setDropdownIndex(dropdownIndex === index ? null : index);

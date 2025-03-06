@@ -54,7 +54,7 @@ export default function ViewPtLists() {
         },
         body: JSON.stringify({
           batchId,
-          semId:semesterId,
+          semId: semesterId,
           ptId,
         }),
       });
@@ -122,10 +122,10 @@ export default function ViewPtLists() {
           pts.map((pt, index) => (
             <div
               key={pt.ptId}
-              className="relative p-4 bg-gray-200 rounded-md shadow-sm hover:shadow-md flex justify-between items-center"
+              className="relative bg-gray-200 rounded-md shadow-sm hover:shadow-md flex justify-between items-center"
             >
               <div
-                className="cursor-pointer flex-grow"
+                className="cursor-pointer p-4 flex-grow"
                 onClick={() =>
                   navigate(`/ptlists/${batchId}/${semesterId}/${pt.ptId}`)
                 }
@@ -135,6 +135,7 @@ export default function ViewPtLists() {
 
               <div className="relative" ref={dropdownRef}>
                 <button
+                  className=" p-4"
                   onClick={(e) => {
                     e.stopPropagation();
                     setDropdownIndex(dropdownIndex === index ? null : index);

@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { User } from '../models/user/userModel';
-import { See } from '../models/see/seeModel';
 import { verifyToken } from './userController';
 
 const handleErrorResponse = (
@@ -11,6 +10,7 @@ const handleErrorResponse = (
 ) => {
   return res.status(status).json({ message });
 };
+
 export const getSeeHeaders = async (req: Request, res: Response) => {
   try {
     const authHeader = req.headers.authorization;
@@ -115,17 +115,15 @@ export const addSeetype = async (req: Request, res: Response) => {
     if (Array.isArray(sem.seelist)) {
       sem.seelist.forEach((student) => {
         if (!(student.scores instanceof Map)) {
-          student.scores = new Map(); // Ensure it's a Map
+          student.scores = new Map(); 
         }
 
-        // Remove invalid keys
         student.scores.forEach((_, key) => {
           if (!validSet.has(key)) {
             student.scores.delete(key);
           }
         });
 
-        // Add missing keys with value 0
         courses.forEach((course) => {
           if (!student.scores.has(course)) {
             student.scores.set(course, 0);
@@ -150,7 +148,6 @@ export const updateSeeScores = async (req: Request, res: Response) => {
     const userId = await verifyToken(authHeader);
     const { rollno, scores, semId, batchId } = req.body;
 
-    // Validate input data
     if (
       !mongoose.Types.ObjectId.isValid(userId) ||
       !mongoose.Types.ObjectId.isValid(batchId) ||
@@ -162,40 +159,32 @@ export const updateSeeScores = async (req: Request, res: Response) => {
       return handleErrorResponse(res, 400, "Invalid input data");
     }
 
-    // Find user
     const user = await User.findById(userId);
     if (!user) return handleErrorResponse(res, 404, "User not found.");
 
-    // Find the semester inside the correct batch
     const batch = user.batches.find((b) => (b as any)._id.equals(batchId));
     if (!batch) return handleErrorResponse(res, 404, "Batch not found.");
 
     const sem = batch.semlists.find((s) => (s as any)._id.equals(semId));
     if (!sem) return handleErrorResponse(res, 404, "Semester not found.");
 
-    // Find student by rollno
     const student = sem.seelist.find((s) => s.rollno === rollno);
     if (!student) return handleErrorResponse(res, 404, "Student not found.");
 
-    // 🔹 Ensure `scores` is a Map
     if (!(student.scores instanceof Map)) {
       student.scores = new Map<string, number>(Object.entries(student.scores || {}));
     }
 
-    // Update student scores safely
     for (const [assignment, score] of Object.entries(scores)) {
       if (typeof score !== "number") {
         return handleErrorResponse(res, 400, `Invalid score for ${assignment}`);
       }
 
-      // 🔹 Correct Map syntax
       student.scores.set(assignment, score);
     }
 
-    // Mark scores as modified
     user.markModified("batches");
 
-    // Save updated user
     await user.save();
 
     return res.status(200).json({ message: "Student score updated successfully." });
